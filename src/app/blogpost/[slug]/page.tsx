@@ -20,10 +20,17 @@ interface Params {
   slug: string;
 }
 
+interface Metadata {
+  title: string;
+  description: string;
+  author: string;
+  date: string;
+}
+
 interface PageProps {
   params: Params;
   content: string;
-  data: any;
+  data: Metadata;  // Specific type instead of 'any'
 }
 
 // This will generate params at build time
