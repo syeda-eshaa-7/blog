@@ -1,80 +1,82 @@
+import fs from "fs/promises";
+import path from "path";
+import rehypeDocument from "rehype-document";
+import rehypeFormat from "rehype-format";
+import rehypeStringify from "rehype-stringify";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
+import matter from "gray-matter";
+import { notFound } from "next/navigation";
+import rehypePrettyCode from "rehype-pretty-code";
+import { transformerCopyButton } from "@rehype-pretty/transformers";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import OnThisPage from "../../components/onthispage";
+import CommentSection from "@/app/components/Comments";
 
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-import { notFound } from 'next/navigation';
-import rehypeDocument from 'rehype-document';
-import rehypeFormat from 'rehype-format';
-import rehypeStringify from 'rehype-stringify';
-import remarkParse from 'remark-parse';
-import remarkRehype from 'remark-rehype';
-import { unified } from 'unified';
-import rehypePrettyCode from 'rehype-pretty-code';
-import { transformerCopyButton } from '@rehype-pretty/transformers';
-import OnThisPage from '../../components/onthispage';
-import rehypeAutolinkHeadings from 'rehype-autolink-headings';
-import rehypeSlug from 'rehype-slug';
-import CommentSection from '@/app/components/Comments';
 
-interface Params {
-  slug: string;
-}
+// Define the type for the params
 
-interface Metadata {
-  title: string;
-  description: string;
-  author: string;
-  date: string;
-}
 
+// Define the type for the props
 interface PageProps {
-  params: Params;
-  content: string;
-  data: Metadata;  // Specific type instead of 'any'
-}
-
-// This will generate params at build time
-export async function generateStaticParams() {
-  const files = fs.readdirSync(path.join(process.cwd(), 'content'));
-  const slugs = files.map(file => ({
-    slug: file.replace('.md', ''),
-  }));
-
-  return slugs;
-}
-
-export default async function Page({ params }: PageProps) {
-  const { slug } = params;
-  const filepath = path.join(process.cwd(), 'content', `${slug}.md`);
-
-  if (!fs.existsSync(filepath)) {
-    notFound();
-    return;
+    params: Promise<{
+      slug: string;
+    }>;
   }
 
-  const fileContent = fs.readFileSync(filepath, 'utf-8');
+// Blog post page
+export default async function Page({ params }: PageProps) {
+    // Await the params as it is a Promise
+    const resolvedParams = await params;
+    const { slug } = resolvedParams;
+  // Construct the filepath for the markdown file
+  const filepath = path.join(process.cwd(), "content", `${slug}.md`);
+
+  let fileContent;
+  try {
+    // Check if the file exists
+    await fs.access(filepath);
+    // Read the content of the markdown file
+    fileContent = await fs.readFile(filepath, "utf-8");
+  } catch {
+    // If the file doesn't exist, return a 404 page
+    notFound();
+    return null; // Return null since we have already sent a 404 response
+  }
+
   const { content, data } = matter(fileContent);
 
+  // Process the markdown content into HTML using unified and rehype
   const processor = unified()
     .use(remarkParse)
     .use(remarkRehype)
-    .use(rehypeDocument, { title: '👋🌍' })
+    .use(rehypeDocument, { title: data.title || "Blog Post" })
     .use(rehypeFormat)
     .use(rehypeStringify)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings)
     .use(rehypePrettyCode, {
-      theme: 'github-dark',
+      theme: "github-dark",
       transformers: [
         transformerCopyButton({
-          visibility: 'always',
-          feedbackDuration: 3000,
+          visibility: "always",
+          feedbackDuration: 3000, // 3 seconds
         }),
       ],
     });
 
-  const htmlContent = (await processor.process(content)).toString();
+  let htmlContent;
+  try {
+    htmlContent = (await processor.process(content)).toString();
+  } catch (error) {
+    console.error("Error processing markdown content:", error);
+    notFound();
+    return;
+  }
 
+  // Return the JSX for the blog post page
   return (
     <div className="max-w-7xl mx-auto p-6">
       {/* Blog Title */}
@@ -105,7 +107,9 @@ export default async function Page({ params }: PageProps) {
 
       {/* Comment Section */}
       <div className="mt-12 bg-gray-100 dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-        <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">Comments</h2>
+        <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+          Comments
+        </h2>
         <CommentSection />
       </div>
     </div>
