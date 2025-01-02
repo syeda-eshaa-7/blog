@@ -11,7 +11,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node", // Changed from "bundler" to "node"
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -26,7 +26,7 @@
         "./src/*"
       ]
     },
-    "target": "ES2017"
+    "target": "esnext" // Changed from "ES2017" to "esnext"
   },
   "include": [
     "next-env.d.ts",
